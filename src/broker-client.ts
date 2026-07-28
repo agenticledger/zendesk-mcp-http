@@ -107,18 +107,23 @@ export async function resolveZendeskToken(principal: string, account = ''): Prom
 }
 
 /**
- * Start a Zendesk connection for the caller and return the one-time consent URL.
- * The user opens it once (Zendesk login -> authorize the OAuth app); the token +
- * subdomain land in the broker vault; the next tool call resolves it. State is
- * single-use, expires in ~10 min.
+ * Start a Zendesk connection for the caller and return the one-time connect URL.
+ * Zendesk is `client_mode: per_connection`, so the MCP never holds the subdomain /
+ * client_id / client_secret. Calling /connect with just {provider} makes the broker
+ * return a `formUrl`: a broker-HOSTED page that collects those three fields, encrypts
+ * the secret broker-side, then 302s to Zendesk consent. The user opens it once; the
+ * token + subdomain land in the broker vault; the next tool call resolves it.
+ * (`authorizeUrl` is only returned when all three fields are passed — the programmatic
+ * proof path — which the MCP never does; we handle it as a fallback.)
  */
-export async function startZendeskConnect(principal: string, account = ''): Promise<{ authorizeUrl: string } | { error: string }> {
+export async function startZendeskConnect(principal: string, account = ''): Promise<{ connectUrl: string } | { error: string }> {
   try {
     const res = await brokerFetch('/connect', principal, { provider: ZENDESK_PROVIDER, ...(account ? { account } : {}) });
     if (!res.ok) return { error: `broker /connect -> ${res.status} ${await res.text()}` };
-    const data = (await res.json()) as { authorizeUrl?: string };
-    if (!data.authorizeUrl) return { error: 'broker /connect returned no authorizeUrl' };
-    return { authorizeUrl: data.authorizeUrl };
+    const data = (await res.json()) as { formUrl?: string; authorizeUrl?: string };
+    const connectUrl = data.formUrl || data.authorizeUrl;
+    if (!connectUrl) return { error: 'broker /connect returned no formUrl/authorizeUrl' };
+    return { connectUrl };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }

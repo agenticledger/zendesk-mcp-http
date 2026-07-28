@@ -241,8 +241,8 @@ async function connectMessage(principal: string): Promise<string> {
       status: 'connection_required',
       provider: SLUG,
       message:
-        'Zendesk is not connected for this caller yet. Open the connect link below once (sign in to Zendesk and authorize — you will supply your subdomain plus the OAuth client_id/client_secret through the broker connect flow), then run the tool again — it will work.',
-      connectUrl: started.authorizeUrl,
+        'Zendesk is not connected for this caller yet. Open the connect link below once — a secure Finney-hosted page asks for your Zendesk subdomain and OAuth client_id/client_secret, then sends you to Zendesk to authorize. After you approve, run the tool again — it will work. Your client secret goes directly to the Connections Broker and is never seen by this MCP.',
+      connectUrl: started.connectUrl,
     },
     null,
     2
