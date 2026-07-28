@@ -62,9 +62,9 @@ export class ZendeskClient {
   /** Common list pagination/sort params, all optional. */
   private page(args: any = {}): Params {
     return {
-      'page[size]': args['page[size]'],
-      'page[after]': args['page[after]'],
-      'page[before]': args['page[before]'],
+      'page[size]': args.page_size,
+      'page[after]': args.page_after,
+      'page[before]': args.page_before,
       per_page: args.per_page,
       page: args.page,
       sort_by: args.sort_by,

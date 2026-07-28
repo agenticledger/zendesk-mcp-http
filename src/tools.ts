@@ -18,9 +18,9 @@ interface ToolDef {
 
 /** Cursor + legacy pagination + sort — all optional. */
 const pageParams = {
-  'page[size]': z.number().optional().describe('cursor page size (max 100)'),
-  'page[after]': z.string().optional().describe('cursor: next page token'),
-  'page[before]': z.string().optional().describe('cursor: prev page token'),
+  page_size: z.number().optional().describe('cursor page size (max 100) -> page[size]'),
+  page_after: z.string().optional().describe('cursor: next page token -> page[after]'),
+  page_before: z.string().optional().describe('cursor: prev page token -> page[before]'),
   per_page: z.number().optional().describe('legacy page size'),
   page: z.number().optional().describe('legacy page number'),
   sort_by: z.string().optional().describe('field to sort by'),
