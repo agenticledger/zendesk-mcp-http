@@ -2,7 +2,13 @@
 
 **Component:** `zendesk-mcp-http` (this repo) — MCP tool layer
 **Severity:** High — blocks creation of triggers, automations, SLA policies, and views via the curated tools (i.e. the routing / escalation / SLA / agent-workspace half of any Zendesk buildout).
-**Status:** Confirmed & root-caused against live prod (`bastionsupport.zendesk.com`) on 2026-07-29.
+**Status:** ✅ **RESOLVED** — fixed in `v2.0.1` (commit `102b110`, live at `zendeskmcp.agenticledger.ai`,
+2026-07-29). Root cause confirmed exactly as diagnosed below. Fix = the recommended host-agnostic
+`asObject()`/`coerce()` coercion, applied to every affected create + update handler and the passthrough
+`body` (`conditions`, `filter`, `execution`, `restriction`, passthrough `body`). Real objects pass
+through unchanged. 7 new mocked-HTTP assertions verify stringified→object coercion (227 total pass).
+**Please re-run the Verification plan below live** — all creates should now 201 (automation still needs a
+valid time condition, per "What this is NOT"). Original confirmation preserved below for the record.
 **NOT the cause:** OAuth scope, Zendesk permissions, the connections broker, or the gateway. Those were independently verified working (see "What this is NOT" below).
 
 ---
