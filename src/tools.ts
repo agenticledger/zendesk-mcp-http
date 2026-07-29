@@ -28,6 +28,31 @@ const WRITE_VERBS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
  */
 const passthroughField = {} as Record<string, never>;
 
+/**
+ * Coerce a stringified-JSON param back into an object/array.
+ *
+ * Object-valued params (`conditions`, `filter`, `execution`, passthrough `body`,
+ * `restriction`) are declared `z.any()`, which emits a typeless JSON Schema (`{}`).
+ * Some MCP hosts serialize such untyped object args as a JSON *string* before they
+ * reach the server; `z.any()` then passes the string through and the client
+ * re-stringifies it, so Zendesk receives a quoted string and rejects it with
+ * `400 "... must be a hash"`. This parses the string back to the real object.
+ * Real objects/arrays pass through unchanged, so it's safe either way.
+ */
+function asObject(v: unknown): unknown {
+  if (typeof v !== 'string') return v;
+  const s = v.trim();
+  if (!s) return undefined;
+  try { return JSON.parse(s); } catch { return v; } // leave non-JSON strings alone
+}
+
+/** Return a shallow copy of `a` with the named keys run through `asObject`. */
+function coerce(a: any, ...keys: string[]): any {
+  const out = { ...a };
+  for (const k of keys) if (k in out) out[k] = asObject(out[k]);
+  return out;
+}
+
 /** Cursor + legacy pagination + sort — all optional. */
 const pageParams = {
   page_size: z.number().optional().describe('cursor page size (max 100) -> page[size]'),
@@ -476,7 +501,7 @@ export const tools: ToolDef[] = [
             `re-call with allow_writes:true to permit this write.`,
         };
       }
-      return c.raw(method, a.path, a.query, a.body);
+      return c.raw(method, a.path, a.query, asObject(a.body));
     },
   },
 
@@ -611,13 +636,13 @@ export const tools: ToolDef[] = [
       policy_metrics: z.array(z.any()).optional().describe('SLA targets'),
       ...passthroughField,
     }),
-    handler: async (c, a) => c.createSlaPolicy(a),
+    handler: async (c, a) => c.createSlaPolicy(coerce(a, 'filter')),
   },
   {
     name: 'sla_policy_update',
     description: 'Update an SLA policy. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('SLA policy ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSlaPolicy(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSlaPolicy(id, coerce(rest, 'filter')); },
   },
   {
     name: 'sla_policy_delete',
@@ -646,13 +671,13 @@ export const tools: ToolDef[] = [
       position: z.number().optional().describe('order'),
       ...passthroughField,
     }),
-    handler: async (c, a) => c.createTrigger(a),
+    handler: async (c, a) => c.createTrigger(coerce(a, 'conditions')),
   },
   {
     name: 'trigger_update',
     description: 'Update a trigger. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('trigger ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTrigger(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTrigger(id, coerce(rest, 'conditions')); },
   },
   {
     name: 'trigger_delete',
@@ -691,13 +716,13 @@ export const tools: ToolDef[] = [
       active: z.boolean().optional().describe('active'),
       ...passthroughField,
     }),
-    handler: async (c, a) => c.createAutomation(a),
+    handler: async (c, a) => c.createAutomation(coerce(a, 'conditions')),
   },
   {
     name: 'automation_update',
     description: 'Update an automation. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('automation ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateAutomation(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateAutomation(id, coerce(rest, 'conditions')); },
   },
   {
     name: 'automation_delete',
@@ -784,7 +809,7 @@ export const tools: ToolDef[] = [
       restriction: z.any().optional().describe('group/agent restriction'),
       ...passthroughField,
     }),
-    handler: async (c, a) => c.createMacro(a),
+    handler: async (c, a) => c.createMacro(coerce(a, 'restriction')),
   },
   {
     name: 'macro_update',
@@ -811,13 +836,13 @@ export const tools: ToolDef[] = [
       restriction: z.any().optional().describe('group/agent restriction'),
       ...passthroughField,
     }),
-    handler: async (c, a) => c.createView(a),
+    handler: async (c, a) => c.createView(coerce(a, 'conditions', 'execution', 'restriction')),
   },
   {
     name: 'view_update',
     description: 'Update a view. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('view ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateView(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateView(id, coerce(rest, 'conditions', 'execution', 'restriction')); },
   },
   {
     name: 'view_delete',

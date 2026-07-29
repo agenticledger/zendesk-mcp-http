@@ -161,6 +161,41 @@ async function main() {
   await expectCall('hc_article_update', { id: '30', title: 'X' }, { method: 'PUT', pathIncludes: '/help_center/articles/30', bodyKey: 'article' });
   await expectCall('hc_article_delete', { id: '30' }, { method: 'DELETE', pathIncludes: '/help_center/articles/30' });
 
+  // ---- Serialization coercion (BUG-hash-param-serialization): stringified-JSON
+  //      object params must arrive at Zendesk as real objects, not quoted strings ----
+  {
+    const { call } = await run('trigger_create', { title: 'zzz', conditions: '{"all":[{"field":"status","operator":"is","value":"solved"}]}', actions: [] });
+    const cond = call?.body?.trigger?.conditions;
+    check(cond && typeof cond === 'object' && Array.isArray(cond.all), 'trigger_create: stringified conditions coerced to object (not "must be a hash")');
+  }
+  {
+    const { call } = await run('automation_create', { title: 'zzz', conditions: '{"all":[]}', actions: [] });
+    check(typeof call?.body?.automation?.conditions === 'object', 'automation_create: stringified conditions coerced');
+  }
+  {
+    const { call } = await run('sla_policy_create', { title: 'zzz', filter: '{"all":[]}', policy_metrics: [] });
+    check(typeof call?.body?.sla_policy?.filter === 'object', 'sla_policy_create: stringified filter coerced');
+  }
+  {
+    const { call } = await run('view_create', { title: 'zzz', conditions: '{"all":[]}', execution: '{"columns":["status"]}' });
+    const v = call?.body?.view;
+    check(typeof v?.conditions === 'object' && typeof v?.execution === 'object', 'view_create: stringified conditions+execution coerced');
+  }
+  {
+    const { call } = await run('automation_update', { id: '2', conditions: '{"all":[]}' });
+    check(typeof call?.body?.automation?.conditions === 'object', 'automation_update: stringified conditions coerced');
+  }
+  {
+    // passthrough body given as a string must NOT be double-encoded — it must arrive as an object
+    const { call } = await run('zendesk_api_request', { method: 'POST', path: '/api/v2/triggers', body: '{"trigger":{"title":"x","conditions":{"all":[]}}}', allow_writes: true });
+    check(call?.body && typeof call.body === 'object' && typeof call.body.trigger === 'object', 'zendesk_api_request: stringified body coerced (no double-encode)');
+  }
+  {
+    // real objects must still pass through unchanged
+    const { call } = await run('trigger_create', { title: 'zzz', conditions: { all: [] }, actions: [] });
+    check(typeof call?.body?.trigger?.conditions === 'object', 'trigger_create: real-object conditions still an object');
+  }
+
   // ---- Sanity: no call ever left the sandbox host ----
   check(true, 'sentinel');
 

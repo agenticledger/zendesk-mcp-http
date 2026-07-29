@@ -1,6 +1,6 @@
 {
   "name": "zendesk-mcp-http",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Zendesk MCP Server — Exposed via Streamable HTTP transport (broker-first)",
   "type": "module",
   "main": "dist/index.js",

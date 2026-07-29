@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zendesk MCP Server - API Reference | AgenticLedger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* AgenticLedger Dark Theme — purple/blue gradients */
+      --bg-primary: #0a0a14;
+      --bg-secondary: #0e0f1e;
+      --bg-sidebar: #0b0c1a;
+      --bg-card: #12132a;
+      --bg-code: #0a0b16;
+
+      --text-primary: #eef0f6;
+      --text-secondary: #9ba3c2;
+      --text-muted: #5f6889;
+      --text-light: #3d4560;
+
+      /* accents — purple/blue */
+      --accent-purple: #a78bfa;
+      --accent-purple-light: #c4b5fd;
+      --accent-purple-bg: rgba(167, 139, 250, 0.12);
+      --accent-cyan: #67e8f9;
+      --accent-cyan-bg: rgba(103, 232, 249, 0.1);
+      --accent-blue: #6366f1;
+      --accent-blue-bg: rgba(99, 102, 241, 0.15);
+
+      --status-stable: #4ade80;
+      --status-stable-bg: rgba(74, 222, 128, 0.15);
+
+      --required-color: #f87171;
+      --border-color: rgba(99, 102, 241, 0.2);
+      --border-light: rgba(255, 255, 255, 0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .sidebar-subtitle {
+      font-size: 11px;
+      color: var(--accent-purple);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .jump-to {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .jump-to kbd {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .sidebar-search {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 3px var(--accent-purple-bg);
+    }
+
+    .search-input::placeholder { color: var(--text-light); }
+
+    .sidebar-nav { padding: 8px 0; }
+
+    .nav-section {
+      padding: 12px 16px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-purple);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px 7px 24px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 12.5px;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: var(--accent-blue-bg);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-purple-bg);
+      color: var(--accent-purple);
+      border-left-color: var(--accent-purple);
+    }
+
+    /* Main */
+    .main { flex: 1; margin-left: 280px; }
+
+    /* Ambient glow */
+    .main::before {
+      content: '';
+      position: fixed;
+      top: 5%;
+      left: 50%;
+      width: 900px;
+      height: 900px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(167, 139, 250, 0.04) 30%, transparent 60%);
+      transform: translateX(-30%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 40px 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-breadcrumb {
+      font-size: 12px;
+      color: var(--accent-purple);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .hero-description {
+      font-size: 15px;
+      color: var(--text-secondary);
+      max-width: 700px;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .hero-badge.auth {
+      background: rgba(251, 191, 36, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .hero-badge.base-url {
+      background: var(--accent-blue-bg);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent-purple);
+    }
+
+    .hero-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .content { padding: 32px 48px; max-width: 1400px; position: relative; z-index: 1; }
+
+    /* Connect card */
+    .connect-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 32px;
+    }
+
+    .connect-card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .connect-card p { font-size: 14px; color: var(--text-secondary); max-width: 760px; }
+
+    .connect-steps {
+      list-style: none;
+      counter-reset: step;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .connect-steps li {
+      position: relative;
+      padding-left: 40px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+    }
+
+    .connect-steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent-purple-bg);
+      color: var(--accent-purple);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid var(--accent-purple);
+    }
+
+    .connect-card code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: var(--bg-code);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+      border: 1px solid var(--border-light);
+    }
+
+    .connect-card a { color: var(--accent-purple-light); text-decoration: none; }
+    .connect-card a:hover { text-decoration: underline; }
+
+    .connect-note {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Tool Card */
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .tool-card:target { box-shadow: 0 0 0 2px var(--accent-purple); }
+
+    .tool-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-secondary);
+    }
+
+    .tool-method {
+      padding: 4px 10px;
+      background: var(--accent-purple-bg);
+      color: var(--accent-purple);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tool-endpoint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--accent-cyan);
+      flex: 1;
+    }
+
+    .tool-status {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--status-stable-bg);
+      color: var(--status-stable);
+    }
+
+    .tool-body { display: grid; grid-template-columns: 1fr 450px; }
+
+    .tool-details {
+      padding: 24px;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .tool-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .tool-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-purple);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Parameters */
+    .params-list {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .param-row {
+      display: flex;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--bg-secondary);
+    }
+
+    .param-row:last-child { border-bottom: none; }
+
+    .param-info { flex: 1; }
+
+    .param-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .param-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent-cyan);
+    }
+
+    .param-type { font-size: 12px; color: var(--text-muted); }
+    .param-required { font-size: 11px; color: var(--required-color); font-weight: 500; }
+    .param-desc { font-size: 13px; color: var(--text-secondary); }
+
+    .param-input { width: 160px; }
+
+    .param-input input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-card);
+      transition: border-color 0.2s;
+    }
+
+    .param-input input:focus {
+      outline: none;
+      border-color: var(--accent-purple);
+    }
+
+    .param-input input::placeholder { color: var(--text-light); }
+
+    .no-params {
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Code Panel */
+    .tool-code {
+      background: var(--bg-code);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .code-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .code-actions { display: flex; gap: 8px; }
+
+    .copy-btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-purple-bg);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-purple);
+      font-weight: 500;
+    }
+
+    .copy-btn:hover { background: rgba(167, 139, 250, 0.25); }
+
+    .copy-btn svg { width: 14px; height: 14px; }
+
+    .code-block {
+      background: #080912;
+      border-radius: 8px;
+      flex: 1;
+      min-height: 120px;
+      border: 1px solid var(--border-light);
+    }
+
+    .code-content {
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      overflow-x: auto;
+    }
+
+    .code-content pre { margin: 0; white-space: pre-wrap; }
+
+    .code-string { color: var(--accent-cyan); }
+    .code-url { color: var(--accent-purple-light); }
+    .code-keyword { color: #f87171; }
+    .code-number { color: #fbbf24; }
+
+    /* Response Section */
+    .response-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .response-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .response-toggle {
+      font-size: 11px;
+      color: var(--accent-purple);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .response-codes {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .response-code {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .response-code:hover { background: var(--border-light); }
+    .response-code.active { background: var(--border-light); color: var(--text-primary); }
+
+    .response-code .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .response-code .dot.success { background: var(--status-stable); }
+    .response-code .dot.error { background: #f87171; }
+
+    .response-body {
+      background: #080912;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+      border: 1px solid var(--border-light);
+    }
+
+    .response-body.visible { display: block; }
+
+    .response-body pre {
+      padding: 12px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Category Header */
+    .category-header {
+      margin: 32px 0 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .category-header:first-child { margin-top: 0; }
+
+    .category-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .category-count {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent-purple);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(167, 139, 250, 0.3);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+    @media (max-width: 1200px) {
+      .tool-body { grid-template-columns: 1fr; }
+      .tool-details { border-right: none; border-bottom: 1px solid var(--border-color); }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero, .content { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">ZD</div>
+        <div class="logo-text">
+          <div class="sidebar-title">Zendesk</div>
+          <div class="sidebar-subtitle">MCP Server</div>
+        </div>
+      </div>
+      <div class="jump-to"><span>Jump to</span><kbd>Ctrl /</kbd></div>
+      <div class="sidebar-search">
+        <input type="text" class="search-input" placeholder="Search 101 tools..." id="searchInput">
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+    </aside>
+
+    <main class="main">
+      <div class="hero">
+        <div class="hero-breadcrumb">Zendesk &rsaquo; Support &amp; Help Center &rsaquo; API Reference</div>
+        <h1>Zendesk MCP Server</h1>
+        <p class="hero-description">
+          Zendesk Support + Help Center over MCP &mdash; tickets, users, orgs, and full configuration
+          management. A broker-first Model Context Protocol interface for AI agents, built for finance
+          and support operations. Connect once and 101 tools go live.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-badge auth">Broker-First OAuth</span>
+          <span class="hero-badge base-url">zendeskmcp.agenticledger.ai/mcp</span>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-value" id="statTotal">101</div>
+            <div class="hero-stat-label">Total Tools</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value" id="statStable">101</div>
+            <div class="hero-stat-label">Stable</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">18</div>
+            <div class="hero-stat-label">Categories</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">v2.0.0</div>
+            <div class="hero-stat-label">Version</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">OAuth</div>
+            <div class="hero-stat-label">Auth Model</div>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="connect-card">
+          <h2>How to connect</h2>
+          <p>
+            This server is <strong>broker-first</strong>: the MCP process holds zero Zendesk secrets. Auth
+            is <strong>per-connection OAuth</strong> &mdash; you supply your own Zendesk subdomain and OAuth
+            client id/secret once through a broker-hosted connect page, and the broker stores and refreshes
+            the token for you. If you call a tool before connecting, the server replies with a structured
+            <code>connection_required</code> message (never an error) pointing you to the connect page.
+          </p>
+          <ol class="connect-steps">
+            <li>Point your MCP client at <code>https://zendeskmcp.agenticledger.ai/mcp</code> (label it <em>Connect via HTTP</em>).</li>
+            <li>On first call, open the broker-hosted connect page at <a href="https://zendeskmcp.agenticledger.ai/" target="_blank" rel="noopener">https://zendeskmcp.agenticledger.ai/</a> and enter your Zendesk <code>subdomain</code> plus your own OAuth <code>client_id</code> / <code>client_secret</code>.</li>
+            <li>Approve the OAuth grant in Zendesk. The broker exchanges and stores the token &mdash; all 101 tools go live for your principal.</li>
+          </ol>
+          <div class="connect-note">
+            Escape hatch: for direct or testing use you may pass a raw <code>Authorization: Bearer &lt;token&gt;</code>
+            together with an <code>X-Zendesk-Base-Url</code> header instead of connecting through the broker.
+            Every tool targets <code>{baseUrl}/api/v2</code>.
+          </div>
+        </div>
+        <div class="content-tools" id="toolsContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Zendesk MCP Server — All 101 tools across 18 categories
+    const TOOLS = [
+      // ===== Tickets (12) =====
+      {
+        name: 'tickets_list',
+        description: 'List tickets in the account (cursor or legacy pagination).',
+        category: 'Tickets',
+        params: [
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' },
+          { name: 'page_after', type: 'string', required: false, description: 'cursor: next page token' }
+        ],
+        exampleResponse: { tickets: [{ id: 35436, subject: "Billing question", status: "open", priority: "normal", requester_id: 20977 }], meta: { has_more: true, after_cursor: "eyJvIjoi..." } }
+      },
+      {
+        name: 'tickets_get',
+        description: 'Get a single ticket by ID.',
+        category: 'Tickets',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket ID' } ],
+        exampleResponse: { ticket: { id: 35436, subject: "Billing question", status: "open", priority: "normal", assignee_id: 235323 } }
+      },
+      {
+        name: 'tickets_show_many',
+        description: 'Get many tickets at once by comma-separated IDs.',
+        category: 'Tickets',
+        params: [ { name: 'ids', type: 'string', required: true, description: 'comma-separated ticket IDs' } ],
+        exampleResponse: { tickets: [{ id: 35436, status: "open" }, { id: 35437, status: "pending" }] }
+      },
+      {
+        name: 'tickets_create',
+        description: 'Create a ticket with an initial comment, requester, priority, type, and tags.',
+        category: 'Tickets',
+        params: [
+          { name: 'comment', type: 'object', required: true, description: 'initial comment { body, public }' },
+          { name: 'subject', type: 'string', required: false, description: 'ticket subject' },
+          { name: 'requester_id', type: 'number', required: false, description: 'requester user ID' },
+          { name: 'priority', type: 'string', required: false, description: 'urgent, high, normal, low' },
+          { name: 'type', type: 'string', required: false, description: 'problem, incident, question, task' },
+          { name: 'tags', type: 'array', required: false, description: 'tags' }
+        ],
+        exampleResponse: { ticket: { id: 35440, subject: "Refund request", status: "new", created_at: "2026-07-28T12:00:00Z" } }
+      },
+      {
+        name: 'tickets_update',
+        description: 'Update a ticket: status, priority, assignee, group, or tags.',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'status', type: 'string', required: false, description: 'updated status' },
+          { name: 'priority', type: 'string', required: false, description: 'urgent, high, normal, low' },
+          { name: 'assignee_id', type: 'number', required: false, description: 'assignee user ID' },
+          { name: 'tags', type: 'array', required: false, description: 'replace tags' }
+        ],
+        exampleResponse: { ticket: { id: 35436, status: "pending", priority: "high", updated_at: "2026-07-28T12:05:00Z" } }
+      },
+      {
+        name: 'tickets_delete',
+        description: 'Delete a ticket by ID.',
+        category: 'Tickets',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket ID' } ],
+        exampleResponse: { deleted: true, id: 35436 }
+      },
+      {
+        name: 'tickets_merge',
+        description: 'Merge one or more source tickets into a target ticket.',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'target ticket ID' },
+          { name: 'ids', type: 'array', required: true, description: 'source ticket IDs to merge' },
+          { name: 'target_comment', type: 'string', required: false, description: 'comment on target' }
+        ],
+        exampleResponse: { job_status: { id: "8b726e606e...", status: "queued", url: "https://.../api/v2/job_statuses/8b726e.json" } }
+      },
+      {
+        name: 'tickets_add_comment',
+        description: 'Add a public or internal comment to a ticket.',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'body', type: 'string', required: true, description: 'comment body text' },
+          { name: 'public', type: 'boolean', required: false, description: 'public vs internal note' }
+        ],
+        exampleResponse: { ticket: { id: 35436, status: "open" } }
+      },
+      {
+        name: 'tickets_add_tags',
+        description: 'Add tags to a ticket (existing tags are preserved).',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'tags', type: 'array', required: true, description: 'tags to add' }
+        ],
+        exampleResponse: { tags: ["vip", "billing", "escalated"] }
+      },
+      {
+        name: 'tickets_list_comments',
+        description: 'List all comments (public and internal) on a ticket.',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { comments: [{ id: 1274, body: "Thanks for reaching out", public: true, author_id: 235323 }] }
+      },
+      {
+        name: 'tickets_list_audits',
+        description: 'List the audit (change log) events on a ticket.',
+        category: 'Tickets',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { audits: [{ id: 910183, ticket_id: 35436, events: [{ type: "Change", field_name: "status", value: "pending" }] }] }
+      },
+      {
+        name: 'tickets_metrics',
+        description: 'Get response-time and resolution metrics for a ticket.',
+        category: 'Tickets',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket ID' } ],
+        exampleResponse: { ticket_metric: { ticket_id: 35436, reply_time_in_minutes: { calendar: 24, business: 12 }, full_resolution_time_in_minutes: { calendar: 220 } } }
+      },
+
+      // ===== Search (3) =====
+      {
+        name: 'search',
+        description: 'Search across tickets, users, and organizations with Zendesk search syntax.',
+        category: 'Search',
+        params: [
+          { name: 'query', type: 'string', required: true, description: 'Zendesk search query' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { results: [{ id: 35436, result_type: "ticket", subject: "Billing question" }], count: 1 }
+      },
+      {
+        name: 'search_count',
+        description: 'Return only the count of results for a search query.',
+        category: 'Search',
+        params: [ { name: 'query', type: 'string', required: true, description: 'Zendesk search query' } ],
+        exampleResponse: { count: 42 }
+      },
+      {
+        name: 'incremental_tickets',
+        description: 'Incremental ticket export from a unix start time (low-rate endpoint).',
+        category: 'Search',
+        params: [
+          { name: 'start_time', type: 'number', required: true, description: 'unix epoch start time' },
+          { name: 'per_page', type: 'number', required: false, description: 'page size (max 1000)' }
+        ],
+        exampleResponse: { tickets: [{ id: 35436, generated_timestamp: 1730000123 }], end_time: 1730000200, next_page: "https://.../incremental/tickets.json?start_time=1730000200", count: 1 }
+      },
+
+      // ===== Users (9) =====
+      {
+        name: 'users_list',
+        description: 'List users, optionally filtered by role.',
+        category: 'Users',
+        params: [
+          { name: 'role', type: 'string', required: false, description: 'filter by role (end-user, agent, admin)' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { users: [{ id: 20977, name: "Jane Doe", role: "agent", email: "jane@example.com" }] }
+      },
+      {
+        name: 'users_get',
+        description: 'Get a single user by ID.',
+        category: 'Users',
+        params: [ { name: 'id', type: 'string', required: true, description: 'user ID' } ],
+        exampleResponse: { user: { id: 20977, name: "Jane Doe", email: "jane@example.com", role: "agent", verified: true } }
+      },
+      {
+        name: 'users_search',
+        description: 'Search users by name, email, or query string.',
+        category: 'Users',
+        params: [
+          { name: 'query', type: 'string', required: true, description: 'search query' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { users: [{ id: 20977, name: "Jane Doe", email: "jane@example.com" }], count: 1 }
+      },
+      {
+        name: 'users_me',
+        description: 'Get the currently authenticated user.',
+        category: 'Users',
+        params: [],
+        exampleResponse: { user: { id: 490120, name: "API User", role: "admin", email: "ops@example.com" } }
+      },
+      {
+        name: 'users_identities',
+        description: "List a user's identities (email, phone, etc.).",
+        category: 'Users',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'user ID' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { identities: [{ id: 813, type: "email", value: "jane@example.com", primary: true, verified: true }] }
+      },
+      {
+        name: 'users_related',
+        description: 'Get counts related to a user (assigned/requested tickets, etc.).',
+        category: 'Users',
+        params: [ { name: 'id', type: 'string', required: true, description: 'user ID' } ],
+        exampleResponse: { user_related: { assigned_tickets: 3, requested_tickets: 8, ccd_tickets: 1, organization_subscriptions: 0 } }
+      },
+      {
+        name: 'users_create',
+        description: 'Create a user with name, email, role, and organization.',
+        category: 'Users',
+        params: [
+          { name: 'name', type: 'string', required: true, description: 'full name' },
+          { name: 'email', type: 'string', required: false, description: 'email address' },
+          { name: 'role', type: 'string', required: false, description: 'end-user, agent, admin' },
+          { name: 'organization_id', type: 'number', required: false, description: 'organization ID' }
+        ],
+        exampleResponse: { user: { id: 99000, name: "New Agent", role: "agent", created_at: "2026-07-28T12:00:00Z" } }
+      },
+      {
+        name: 'users_update',
+        description: 'Update a user by ID.',
+        category: 'Users',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'user ID' },
+          { name: 'name', type: 'string', required: false, description: 'updated name' },
+          { name: 'email', type: 'string', required: false, description: 'updated email' },
+          { name: 'role', type: 'string', required: false, description: 'end-user, agent, admin' }
+        ],
+        exampleResponse: { user: { id: 20977, name: "Jane D.", role: "admin" } }
+      },
+      {
+        name: 'users_delete',
+        description: 'Soft-delete (deactivate) a user by ID.',
+        category: 'Users',
+        params: [ { name: 'id', type: 'string', required: true, description: 'user ID' } ],
+        exampleResponse: { user: { id: 20977, active: false } }
+      },
+
+      // ===== Organizations (7) =====
+      {
+        name: 'organizations_list',
+        description: 'List organizations.',
+        category: 'Organizations',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { organizations: [{ id: 57542, name: "Acme Corp", domain_names: ["acme.com"] }] }
+      },
+      {
+        name: 'organizations_get',
+        description: 'Get a single organization by ID.',
+        category: 'Organizations',
+        params: [ { name: 'id', type: 'string', required: true, description: 'organization ID' } ],
+        exampleResponse: { organization: { id: 57542, name: "Acme Corp", details: "Enterprise plan", tags: ["vip"] } }
+      },
+      {
+        name: 'organizations_search',
+        description: 'Search organizations by exact name.',
+        category: 'Organizations',
+        params: [ { name: 'name', type: 'string', required: true, description: 'exact organization name' } ],
+        exampleResponse: { organizations: [{ id: 57542, name: "Acme Corp" }] }
+      },
+      {
+        name: 'organization_memberships',
+        description: 'List organization memberships, filterable by user or organization.',
+        category: 'Organizations',
+        params: [
+          { name: 'user_id', type: 'number', required: false, description: 'filter by user ID' },
+          { name: 'organization_id', type: 'number', required: false, description: 'filter by org ID' }
+        ],
+        exampleResponse: { organization_memberships: [{ id: 4321, user_id: 20977, organization_id: 57542, default: true }] }
+      },
+      {
+        name: 'organizations_create',
+        description: 'Create an organization with domains, details, and tags.',
+        category: 'Organizations',
+        params: [
+          { name: 'name', type: 'string', required: true, description: 'organization name' },
+          { name: 'domain_names', type: 'array', required: false, description: 'email domains' },
+          { name: 'details', type: 'string', required: false, description: 'details text' }
+        ],
+        exampleResponse: { organization: { id: 57600, name: "Globex", created_at: "2026-07-28T12:00:00Z" } }
+      },
+      {
+        name: 'organizations_update',
+        description: 'Update an organization by ID.',
+        category: 'Organizations',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'organization ID' },
+          { name: 'name', type: 'string', required: false, description: 'updated name' },
+          { name: 'notes', type: 'string', required: false, description: 'notes text' }
+        ],
+        exampleResponse: { organization: { id: 57542, name: "Acme Corporation" } }
+      },
+      {
+        name: 'organizations_delete',
+        description: 'Delete an organization by ID.',
+        category: 'Organizations',
+        params: [ { name: 'id', type: 'string', required: true, description: 'organization ID' } ],
+        exampleResponse: { deleted: true, id: 57542 }
+      },
+
+      // ===== Groups (8) =====
+      {
+        name: 'groups_list',
+        description: 'List agent groups.',
+        category: 'Groups',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { groups: [{ id: 211, name: "Support", default: true }] }
+      },
+      {
+        name: 'groups_get',
+        description: 'Get a single group by ID.',
+        category: 'Groups',
+        params: [ { name: 'id', type: 'string', required: true, description: 'group ID' } ],
+        exampleResponse: { group: { id: 211, name: "Support", description: "First-line support" } }
+      },
+      {
+        name: 'group_memberships',
+        description: 'List group memberships, filterable by user or group.',
+        category: 'Groups',
+        params: [
+          { name: 'user_id', type: 'number', required: false, description: 'filter by user ID' },
+          { name: 'group_id', type: 'number', required: false, description: 'filter by group ID' }
+        ],
+        exampleResponse: { group_memberships: [{ id: 1207, user_id: 20977, group_id: 211, default: true }] }
+      },
+      {
+        name: 'group_create',
+        description: 'Create an agent group.',
+        category: 'Groups',
+        params: [
+          { name: 'name', type: 'string', required: true, description: 'group name' },
+          { name: 'description', type: 'string', required: false, description: 'group description' },
+          { name: 'default', type: 'boolean', required: false, description: 'make default group' }
+        ],
+        exampleResponse: { group: { id: 505, name: "Finance Ops", created_at: "2026-07-28T12:00:00Z" } }
+      },
+      {
+        name: 'group_update',
+        description: 'Update a group by ID.',
+        category: 'Groups',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'group ID' },
+          { name: 'name', type: 'string', required: false, description: 'updated name' },
+          { name: 'description', type: 'string', required: false, description: 'updated description' }
+        ],
+        exampleResponse: { group: { id: 505, name: "Finance Support" } }
+      },
+      {
+        name: 'group_delete',
+        description: 'Delete a group by ID.',
+        category: 'Groups',
+        params: [ { name: 'id', type: 'string', required: true, description: 'group ID' } ],
+        exampleResponse: { deleted: true, id: 505 }
+      },
+      {
+        name: 'group_membership_create',
+        description: 'Add a user to a group.',
+        category: 'Groups',
+        params: [
+          { name: 'user_id', type: 'number', required: true, description: 'user ID' },
+          { name: 'group_id', type: 'number', required: true, description: 'group ID' },
+          { name: 'default', type: 'boolean', required: false, description: "make this the user's default group" }
+        ],
+        exampleResponse: { group_membership: { id: 1290, user_id: 20977, group_id: 505 } }
+      },
+      {
+        name: 'group_membership_delete',
+        description: 'Remove a group membership by its membership ID.',
+        category: 'Groups',
+        params: [ { name: 'id', type: 'string', required: true, description: 'group membership ID' } ],
+        exampleResponse: { deleted: true, id: 1290 }
+      },
+
+      // ===== Views (6) =====
+      {
+        name: 'views_list',
+        description: 'List views.',
+        category: 'Views',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { views: [{ id: 25, title: "Unassigned tickets", active: true }] }
+      },
+      {
+        name: 'views_execute',
+        description: 'Execute a view and return its computed rows and columns.',
+        category: 'Views',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'view ID' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { rows: [{ ticket: { id: 35436 }, subject: "Billing question", priority: "normal" }], columns: [{ id: "subject", title: "Subject" }] }
+      },
+      {
+        name: 'views_tickets',
+        description: 'List the tickets currently matched by a view.',
+        category: 'Views',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'view ID' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { tickets: [{ id: 35436, subject: "Billing question", status: "open" }] }
+      },
+      {
+        name: 'view_create',
+        description: 'Create a view from conditions and an execution (columns/group/sort) config.',
+        category: 'Views',
+        params: [
+          { name: 'title', type: 'string', required: true, description: 'view title' },
+          { name: 'conditions', type: 'object', required: false, description: '{ all:[...], any:[...] }' },
+          { name: 'execution', type: 'object', required: false, description: 'columns/group/sort config' },
+          { name: 'active', type: 'boolean', required: false, description: 'active' }
+        ],
+        exampleResponse: { view: { id: 700, title: "Finance escalations", active: true } }
+      },
+      {
+        name: 'view_update',
+        description: 'Update a view by ID (pass any view attributes to change).',
+        category: 'Views',
+        params: [ { name: 'id', type: 'string', required: true, description: 'view ID' } ],
+        exampleResponse: { view: { id: 700, title: "Finance escalations (v2)" } }
+      },
+      {
+        name: 'view_delete',
+        description: 'Delete a view by ID.',
+        category: 'Views',
+        params: [ { name: 'id', type: 'string', required: true, description: 'view ID' } ],
+        exampleResponse: { deleted: true, id: 700 }
+      },
+
+      // ===== Macros (6) =====
+      {
+        name: 'macros_list',
+        description: 'List macros.',
+        category: 'Macros',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { macros: [{ id: 360, title: "Close and redirect to Billing", active: true }] }
+      },
+      {
+        name: 'macros_apply_preview',
+        description: "Preview the changes a macro would apply (without saving).",
+        category: 'Macros',
+        params: [ { name: 'id', type: 'string', required: true, description: 'macro ID' } ],
+        exampleResponse: { result: { ticket: { status: "solved", comment: { body: "Resolved — closing." } } } }
+      },
+      {
+        name: 'macro_get',
+        description: 'Get a single macro by ID.',
+        category: 'Macros',
+        params: [ { name: 'id', type: 'string', required: true, description: 'macro ID' } ],
+        exampleResponse: { macro: { id: 360, title: "Close and redirect to Billing", actions: [{ field: "status", value: "solved" }] } }
+      },
+      {
+        name: 'macro_create',
+        description: 'Create a macro from a list of actions to apply to a ticket.',
+        category: 'Macros',
+        params: [
+          { name: 'title', type: 'string', required: true, description: 'macro title' },
+          { name: 'actions', type: 'array', required: false, description: 'actions to apply' },
+          { name: 'active', type: 'boolean', required: false, description: 'active' }
+        ],
+        exampleResponse: { macro: { id: 401, title: "Tag as finance", active: true } }
+      },
+      {
+        name: 'macro_update',
+        description: 'Update a macro by ID (pass any macro attributes to change).',
+        category: 'Macros',
+        params: [ { name: 'id', type: 'string', required: true, description: 'macro ID' } ],
+        exampleResponse: { macro: { id: 401, title: "Tag as finance-ops" } }
+      },
+      {
+        name: 'macro_delete',
+        description: 'Delete a macro by ID.',
+        category: 'Macros',
+        params: [ { name: 'id', type: 'string', required: true, description: 'macro ID' } ],
+        exampleResponse: { deleted: true, id: 401 }
+      },
+
+      // ===== Triggers (7) =====
+      {
+        name: 'triggers_list',
+        description: 'List triggers.',
+        category: 'Triggers',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { triggers: [{ id: 780, title: "Notify assignee of comment", active: true }] }
+      },
+      {
+        name: 'trigger_get',
+        description: 'Get a single trigger by ID.',
+        category: 'Triggers',
+        params: [ { name: 'id', type: 'string', required: true, description: 'trigger ID' } ],
+        exampleResponse: { trigger: { id: 780, title: "Notify assignee of comment", conditions: { all: [] }, actions: [] } }
+      },
+      {
+        name: 'trigger_create',
+        description: 'Create a trigger from conditions and actions; optionally set a category.',
+        category: 'Triggers',
+        params: [
+          { name: 'title', type: 'string', required: true, description: 'trigger title' },
+          { name: 'conditions', type: 'object', required: false, description: '{ all:[...], any:[...] }' },
+          { name: 'actions', type: 'array', required: false, description: 'actions to run' },
+          { name: 'category_id', type: 'string', required: false, description: 'trigger category ID' }
+        ],
+        exampleResponse: { trigger: { id: 900, title: "Route finance tickets", active: true } }
+      },
+      {
+        name: 'trigger_update',
+        description: 'Update a trigger by ID (pass any trigger attributes to change).',
+        category: 'Triggers',
+        params: [ { name: 'id', type: 'string', required: true, description: 'trigger ID' } ],
+        exampleResponse: { trigger: { id: 900, title: "Route finance tickets (v2)" } }
+      },
+      {
+        name: 'trigger_delete',
+        description: 'Delete a trigger by ID.',
+        category: 'Triggers',
+        params: [ { name: 'id', type: 'string', required: true, description: 'trigger ID' } ],
+        exampleResponse: { deleted: true, id: 900 }
+      },
+      {
+        name: 'trigger_categories_list',
+        description: 'List trigger categories.',
+        category: 'Triggers',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { trigger_categories: [{ id: "1", name: "Notifications", position: 0 }] }
+      },
+      {
+        name: 'trigger_category_create',
+        description: 'Create a trigger category.',
+        category: 'Triggers',
+        params: [ { name: 'name', type: 'string', required: true, description: 'category name' } ],
+        exampleResponse: { trigger_category: { id: "7", name: "Finance routing" } }
+      },
+
+      // ===== Automations (5) =====
+      {
+        name: 'automations_list',
+        description: 'List automations (time-based rules).',
+        category: 'Automations',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { automations: [{ id: 1220, title: "Close ticket 96h after solved", active: true }] }
+      },
+      {
+        name: 'automation_get',
+        description: 'Get a single automation by ID.',
+        category: 'Automations',
+        params: [ { name: 'id', type: 'string', required: true, description: 'automation ID' } ],
+        exampleResponse: { automation: { id: 1220, title: "Close ticket 96h after solved", conditions: { all: [] } } }
+      },
+      {
+        name: 'automation_create',
+        description: 'Create a time-based automation; conditions must include a time condition.',
+        category: 'Automations',
+        params: [
+          { name: 'title', type: 'string', required: true, description: 'automation title' },
+          { name: 'conditions', type: 'object', required: false, description: '{ all:[...], any:[...] }' },
+          { name: 'actions', type: 'array', required: false, description: 'actions to run' }
+        ],
+        exampleResponse: { automation: { id: 1300, title: "Escalate pending > 24h", active: true } }
+      },
+      {
+        name: 'automation_update',
+        description: 'Update an automation by ID (pass any attributes to change).',
+        category: 'Automations',
+        params: [ { name: 'id', type: 'string', required: true, description: 'automation ID' } ],
+        exampleResponse: { automation: { id: 1300, title: "Escalate pending > 12h" } }
+      },
+      {
+        name: 'automation_delete',
+        description: 'Delete an automation by ID.',
+        category: 'Automations',
+        params: [ { name: 'id', type: 'string', required: true, description: 'automation ID' } ],
+        exampleResponse: { deleted: true, id: 1300 }
+      },
+
+      // ===== SLA Policies (5) =====
+      {
+        name: 'sla_policies_list',
+        description: 'List SLA policies.',
+        category: 'SLA Policies',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { sla_policies: [{ id: 40, title: "Priority SLA", position: 1 }] }
+      },
+      {
+        name: 'sla_policy_get',
+        description: 'Get a single SLA policy by ID.',
+        category: 'SLA Policies',
+        params: [ { name: 'id', type: 'string', required: true, description: 'SLA policy ID' } ],
+        exampleResponse: { sla_policy: { id: 40, title: "Priority SLA", policy_metrics: [{ priority: "high", metric: "first_reply_time", target: 30 }] } }
+      },
+      {
+        name: 'sla_policy_create',
+        description: 'Create an SLA policy: filter selects tickets, policy_metrics sets targets.',
+        category: 'SLA Policies',
+        params: [
+          { name: 'title', type: 'string', required: true, description: 'policy title' },
+          { name: 'filter', type: 'object', required: false, description: '{ all:[...], any:[...] } condition set' },
+          { name: 'policy_metrics', type: 'array', required: false, description: 'SLA targets' },
+          { name: 'position', type: 'number', required: false, description: 'evaluation order' }
+        ],
+        exampleResponse: { sla_policy: { id: 60, title: "Finance SLA", position: 2 } }
+      },
+      {
+        name: 'sla_policy_update',
+        description: 'Update an SLA policy by ID (pass any attributes to change).',
+        category: 'SLA Policies',
+        params: [ { name: 'id', type: 'string', required: true, description: 'SLA policy ID' } ],
+        exampleResponse: { sla_policy: { id: 60, title: "Finance SLA (v2)" } }
+      },
+      {
+        name: 'sla_policy_delete',
+        description: 'Delete an SLA policy by ID.',
+        category: 'SLA Policies',
+        params: [ { name: 'id', type: 'string', required: true, description: 'SLA policy ID' } ],
+        exampleResponse: { deleted: true, id: 60 }
+      },
+
+      // ===== Business Hours Schedules (4) =====
+      {
+        name: 'schedule_list',
+        description: 'List business-hours schedules.',
+        category: 'Business Hours Schedules',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { schedules: [{ id: 3, name: "US Business Hours", time_zone: "Eastern Time (US & Canada)" }] }
+      },
+      {
+        name: 'schedule_get',
+        description: 'Get a single business-hours schedule by ID.',
+        category: 'Business Hours Schedules',
+        params: [ { name: 'id', type: 'string', required: true, description: 'schedule ID' } ],
+        exampleResponse: { schedule: { id: 3, name: "US Business Hours", time_zone: "Eastern Time (US & Canada)", intervals: [{ start_time: 1980, end_time: 2460 }] } }
+      },
+      {
+        name: 'schedule_create',
+        description: 'Create a business-hours schedule with a time zone and work-week intervals.',
+        category: 'Business Hours Schedules',
+        params: [
+          { name: 'name', type: 'string', required: true, description: 'schedule name' },
+          { name: 'time_zone', type: 'string', required: true, description: 'schedule time zone' },
+          { name: 'intervals', type: 'array', required: false, description: 'work-week intervals' }
+        ],
+        exampleResponse: { schedule: { id: 5, name: "EMEA Hours", time_zone: "Greenwich Mean Time" } }
+      },
+      {
+        name: 'schedule_update',
+        description: 'Update a business-hours schedule by ID (pass any attributes to change).',
+        category: 'Business Hours Schedules',
+        params: [ { name: 'id', type: 'string', required: true, description: 'schedule ID' } ],
+        exampleResponse: { schedule: { id: 5, name: "EMEA Business Hours" } }
+      },
+
+      // ===== Custom Statuses (3) =====
+      {
+        name: 'custom_status_list',
+        description: 'List custom ticket statuses.',
+        category: 'Custom Statuses',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { custom_statuses: [{ id: 88, status_category: "open", agent_label: "In progress", active: true }] }
+      },
+      {
+        name: 'custom_status_create',
+        description: 'Create a custom ticket status under a base status category.',
+        category: 'Custom Statuses',
+        params: [
+          { name: 'status_category', type: 'string', required: true, description: 'new, open, pending, hold, solved' },
+          { name: 'agent_label', type: 'string', required: true, description: 'label agents see' },
+          { name: 'end_user_label', type: 'string', required: false, description: 'label end users see' }
+        ],
+        exampleResponse: { custom_status: { id: 90, status_category: "pending", agent_label: "Awaiting finance" } }
+      },
+      {
+        name: 'custom_status_update',
+        description: 'Update a custom ticket status by ID (pass any attributes to change).',
+        category: 'Custom Statuses',
+        params: [ { name: 'id', type: 'string', required: true, description: 'custom status ID' } ],
+        exampleResponse: { custom_status: { id: 90, agent_label: "Awaiting finance review" } }
+      },
+
+      // ===== Ticket Fields (5) =====
+      {
+        name: 'ticket_fields_list',
+        description: 'List ticket fields (system and custom).',
+        category: 'Ticket Fields',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { ticket_fields: [{ id: 34, type: "tagger", title: "Category", active: true }] }
+      },
+      {
+        name: 'ticket_field_get',
+        description: 'Get a single ticket field by ID.',
+        category: 'Ticket Fields',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket field ID' } ],
+        exampleResponse: { ticket_field: { id: 34, type: "tagger", title: "Category", custom_field_options: [{ name: "Billing", value: "billing" }] } }
+      },
+      {
+        name: 'ticket_field_create',
+        description: 'Create a custom ticket field (e.g. a tagger dropdown).',
+        category: 'Ticket Fields',
+        params: [
+          { name: 'type', type: 'string', required: true, description: 'tagger, text, checkbox, integer, decimal, date, regexp, multiselect' },
+          { name: 'title', type: 'string', required: true, description: 'admin title' },
+          { name: 'custom_field_options', type: 'array', required: false, description: 'options for tagger/multiselect: [{ name, value }]' },
+          { name: 'required', type: 'boolean', required: false, description: 'required to solve' }
+        ],
+        exampleResponse: { ticket_field: { id: 120, type: "tagger", title: "Finance category" } }
+      },
+      {
+        name: 'ticket_field_update',
+        description: 'Update a ticket field by ID (pass any attributes to change).',
+        category: 'Ticket Fields',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket field ID' } ],
+        exampleResponse: { ticket_field: { id: 120, title: "Finance sub-category" } }
+      },
+      {
+        name: 'ticket_field_delete',
+        description: 'Delete a ticket field by ID.',
+        category: 'Ticket Fields',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket field ID' } ],
+        exampleResponse: { deleted: true, id: 120 }
+      },
+
+      // ===== Ticket Forms (5) =====
+      {
+        name: 'ticket_forms_list',
+        description: 'List ticket forms.',
+        category: 'Ticket Forms',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { ticket_forms: [{ id: 12, name: "Default", active: true, default: true }] }
+      },
+      {
+        name: 'ticket_form_get',
+        description: 'Get a single ticket form by ID.',
+        category: 'Ticket Forms',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket form ID' } ],
+        exampleResponse: { ticket_form: { id: 12, name: "Default", ticket_field_ids: [34, 35, 36] } }
+      },
+      {
+        name: 'ticket_form_create',
+        description: 'Create a ticket form; ticket_field_ids orders the fields on the form.',
+        category: 'Ticket Forms',
+        params: [
+          { name: 'name', type: 'string', required: true, description: 'form name' },
+          { name: 'ticket_field_ids', type: 'array', required: false, description: 'ordered field IDs' },
+          { name: 'active', type: 'boolean', required: false, description: 'active' }
+        ],
+        exampleResponse: { ticket_form: { id: 20, name: "Finance intake", active: true } }
+      },
+      {
+        name: 'ticket_form_update',
+        description: 'Update a ticket form by ID (pass any attributes to change).',
+        category: 'Ticket Forms',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket form ID' } ],
+        exampleResponse: { ticket_form: { id: 20, name: "Finance intake (v2)" } }
+      },
+      {
+        name: 'ticket_form_delete',
+        description: 'Delete a ticket form by ID.',
+        category: 'Ticket Forms',
+        params: [ { name: 'id', type: 'string', required: true, description: 'ticket form ID' } ],
+        exampleResponse: { deleted: true, id: 20 }
+      },
+
+      // ===== Tags (1) =====
+      {
+        name: 'tags_list',
+        description: 'List account tags and their usage counts.',
+        category: 'Tags',
+        params: [ { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' } ],
+        exampleResponse: { tags: [{ name: "billing", count: 1204 }, { name: "vip", count: 88 }] }
+      },
+
+      // ===== Satisfaction (2) =====
+      {
+        name: 'satisfaction_ratings_list',
+        description: 'List CSAT satisfaction ratings, filterable by score and time.',
+        category: 'Satisfaction',
+        params: [
+          { name: 'score', type: 'string', required: false, description: 'filter by score' },
+          { name: 'start_time', type: 'number', required: false, description: 'unix epoch start' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { satisfaction_ratings: [{ id: 501, score: "good", ticket_id: 35436, comment: "Fast and helpful" }] }
+      },
+      {
+        name: 'satisfaction_rating_create',
+        description: 'Create a satisfaction rating on a ticket.',
+        category: 'Satisfaction',
+        params: [
+          { name: 'id', type: 'string', required: true, description: 'ticket ID' },
+          { name: 'score', type: 'string', required: true, description: 'good, bad, offered' },
+          { name: 'comment', type: 'string', required: false, description: 'rating comment' }
+        ],
+        exampleResponse: { satisfaction_rating: { id: 502, score: "good", ticket_id: 35436 } }
+      },
+
+      // ===== Help Center (12) =====
+      {
+        name: 'hc_articles_list',
+        description: 'List Help Center articles for a locale.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: false, description: 'locale e.g. en-us' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { articles: [{ id: 44001, title: "Getting started", section_id: 300, locale: "en-us" }] }
+      },
+      {
+        name: 'hc_articles_get',
+        description: 'Get a single Help Center article by ID.',
+        category: 'Help Center',
+        params: [ { name: 'id', type: 'string', required: true, description: 'article ID' } ],
+        exampleResponse: { article: { id: 44001, title: "Getting started", body: "<p>Welcome...</p>", draft: false } }
+      },
+      {
+        name: 'hc_articles_search',
+        description: 'Search Help Center articles by query and locale.',
+        category: 'Help Center',
+        params: [
+          { name: 'query', type: 'string', required: true, description: 'search query' },
+          { name: 'locale', type: 'string', required: false, description: 'locale e.g. en-us' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { results: [{ id: 44001, title: "Getting started", url: "https://.../articles/44001" }], count: 1 }
+      },
+      {
+        name: 'hc_sections_list',
+        description: 'List Help Center sections for a locale.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: false, description: 'locale e.g. en-us' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { sections: [{ id: 300, name: "FAQ", category_id: 200, locale: "en-us" }] }
+      },
+      {
+        name: 'hc_categories_list',
+        description: 'List Help Center categories for a locale.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: false, description: 'locale e.g. en-us' },
+          { name: 'page_size', type: 'number', required: false, description: 'cursor page size (max 100)' }
+        ],
+        exampleResponse: { categories: [{ id: 200, name: "General", locale: "en-us" }] }
+      },
+      {
+        name: 'hc_category_create',
+        description: 'Create a Help Center category.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: true, description: 'locale e.g. en-us' },
+          { name: 'name', type: 'string', required: true, description: 'category name' },
+          { name: 'description', type: 'string', required: false, description: 'description' }
+        ],
+        exampleResponse: { category: { id: 210, name: "Billing", locale: "en-us" } }
+      },
+      {
+        name: 'hc_category_update',
+        description: 'Update a Help Center category by ID (pass any attributes to change).',
+        category: 'Help Center',
+        params: [ { name: 'id', type: 'string', required: true, description: 'category ID' } ],
+        exampleResponse: { category: { id: 210, name: "Billing & Payments" } }
+      },
+      {
+        name: 'hc_section_create',
+        description: 'Create a Help Center section under a category.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: true, description: 'locale e.g. en-us' },
+          { name: 'category_id', type: 'string', required: true, description: 'parent category ID' },
+          { name: 'name', type: 'string', required: true, description: 'section name' }
+        ],
+        exampleResponse: { section: { id: 320, name: "Invoices", category_id: 210 } }
+      },
+      {
+        name: 'hc_section_update',
+        description: 'Update a Help Center section by ID (pass any attributes to change).',
+        category: 'Help Center',
+        params: [ { name: 'id', type: 'string', required: true, description: 'section ID' } ],
+        exampleResponse: { section: { id: 320, name: "Invoices & Receipts" } }
+      },
+      {
+        name: 'hc_article_create',
+        description: 'Create a Help Center article. Requires permission_group_id; user_segment_id null = everyone.',
+        category: 'Help Center',
+        params: [
+          { name: 'locale', type: 'string', required: true, description: 'locale e.g. en-us' },
+          { name: 'section_id', type: 'string', required: true, description: 'parent section ID' },
+          { name: 'title', type: 'string', required: true, description: 'article title' },
+          { name: 'permission_group_id', type: 'number', required: true, description: 'editing permission group ID' },
+          { name: 'body', type: 'string', required: false, description: 'HTML body' }
+        ],
+        exampleResponse: { article: { id: 44100, title: "How refunds work", section_id: 320, draft: false } }
+      },
+      {
+        name: 'hc_article_update',
+        description: 'Update a Help Center article by ID (pass any attributes to change).',
+        category: 'Help Center',
+        params: [ { name: 'id', type: 'string', required: true, description: 'article ID' } ],
+        exampleResponse: { article: { id: 44100, title: "How refunds work (updated)" } }
+      },
+      {
+        name: 'hc_article_delete',
+        description: 'Delete a Help Center article by ID.',
+        category: 'Help Center',
+        params: [ { name: 'id', type: 'string', required: true, description: 'article ID' } ],
+        exampleResponse: { deleted: true, id: 44100 }
+      },
+
+      // ===== API Passthrough (1) =====
+      {
+        name: 'zendesk_api_request',
+        description: 'Authenticated passthrough to ANY /api/v2 endpoint using the same broker OAuth token. GET is always allowed; write verbs (POST/PUT/DELETE/PATCH) are refused unless allow_writes:true is explicitly passed.',
+        category: 'API Passthrough',
+        params: [
+          { name: 'method', type: 'string', required: true, description: 'GET, POST, PUT, DELETE, PATCH' },
+          { name: 'path', type: 'string', required: true, description: 'endpoint path, e.g. /api/v2/ticket_fields' },
+          { name: 'query', type: 'object', required: false, description: 'query-string params as an object' },
+          { name: 'body', type: 'object', required: false, description: 'JSON request body (for write verbs)' },
+          { name: 'allow_writes', type: 'boolean', required: false, description: 'must be true to permit writes; default false' }
+        ],
+        exampleResponse: { ok: true, status: 200, data: { ticket_fields: [{ id: 34, type: "tagger" }] } }
+      }
+    ];
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast visible';
+      setTimeout(() => toast.className = 'toast', 2500);
+    }
+
+    function groupByCategory(tools) {
+      return tools.reduce((acc, tool) => {
+        if (!acc[tool.category]) acc[tool.category] = [];
+        acc[tool.category].push(tool);
+        return acc;
+      }, {});
+    }
+
+    function renderSidebar(tools) {
+      const grouped = groupByCategory(tools);
+      const nav = document.getElementById('sidebarNav');
+      nav.innerHTML = '';
+
+      Object.entries(grouped).forEach(([category, categoryTools]) => {
+        const section = document.createElement('div');
+        section.innerHTML = `<div class="nav-section">${category} (${categoryTools.length})</div>`;
+
+        categoryTools.forEach(tool => {
+          const link = document.createElement('a');
+          link.href = `#${tool.name}`;
+          link.className = 'nav-item';
+          link.textContent = tool.name;
+          section.appendChild(link);
+        });
+
+        nav.appendChild(section);
+      });
+    }
+
+    function highlightJSON(obj) {
+      return JSON.stringify(obj, null, 2)
+        .replace(/"([^"]+)":/g, '<span class="code-string">"$1"</span>:')
+        .replace(/: "([^"]+)"/g, ': <span class="code-url">"$1"</span>')
+        .replace(/: (\d+\.?\d*)/g, ': <span class="code-number">$1</span>')
+        .replace(/: (true|false|null)/g, ': <span class="code-keyword">$1</span>');
+    }
+
+    function placeholderFor(p) {
+      if (p.type === 'number') {
+        return p.name === 'start_time' ? 1730000000 :
+               p.name === 'permission_group_id' ? 360000 :
+               p.name === 'user_id' ? 20977 :
+               p.name === 'group_id' ? 211 : 35436;
+      }
+      if (p.type === 'array') {
+        return p.name === 'ids' ? [35436, 35437] :
+               p.name === 'ticket_field_ids' ? [34, 35, 36] :
+               p.name === 'domain_names' ? ['acme.com'] :
+               p.name === 'tags' ? ['billing', 'vip'] :
+               p.name === 'custom_field_options' ? [{ name: 'Billing', value: 'billing' }] :
+               p.name === 'policy_metrics' ? [{ priority: 'high', metric: 'first_reply_time', target: 30 }] :
+               p.name === 'actions' ? [{ field: 'status', value: 'solved' }] : ['example'];
+      }
+      if (p.type === 'object') {
+        return p.name === 'comment' ? { body: 'Thanks for reaching out', public: true } :
+               p.name === 'conditions' ? { all: [{ field: 'status', operator: 'is', value: 'open' }] } :
+               p.name === 'filter' ? { all: [{ field: 'priority', operator: 'is', value: 'high' }] } :
+               p.name === 'query' ? { page: { size: 100 } } :
+               p.name === 'execution' ? { columns: ['subject', 'priority'] } : {};
+      }
+      // string
+      return p.name === 'query' ? 'status:open type:ticket' :
+             p.name === 'ids' ? '35436,35437' :
+             p.name === 'name' ? 'Acme Corp' :
+             p.name === 'title' ? 'My title' :
+             p.name === 'agent_label' ? 'In progress' :
+             p.name === 'locale' ? 'en-us' :
+             p.name === 'time_zone' ? 'Eastern Time (US & Canada)' :
+             p.name === 'status_category' ? 'open' :
+             p.name === 'score' ? 'good' :
+             p.name === 'type' ? 'tagger' :
+             p.name === 'method' ? 'GET' :
+             p.name === 'path' ? '/api/v2/tickets.json' :
+             (p.name === 'id' || p.name.endsWith('_id')) ? '35436' : 'example';
+    }
+
+    function generateMCPCall(tool, values = {}) {
+      const args = {};
+      tool.params.forEach(p => {
+        if (values[p.name] !== undefined && values[p.name] !== '') {
+          args[p.name] = p.type === 'number' ? Number(values[p.name]) : values[p.name];
+        } else if (p.required) {
+          args[p.name] = placeholderFor(p);
+        }
+      });
+
+      return {
+        tool: tool.name,
+        ...(Object.keys(args).length > 0 && { arguments: args })
+      };
+    }
+
+    function updateCodePreview(toolName) {
+      const tool = TOOLS.find(t => t.name === toolName);
+      if (!tool) return;
+
+      const card = document.getElementById(toolName);
+      const values = {};
+
+      card.querySelectorAll('.param-input input').forEach(input => {
+        const paramName = input.dataset.param;
+        if (input.value) values[paramName] = input.value;
+      });
+
+      const mcpCall = generateMCPCall(tool, values);
+      const codeEl = card.querySelector('.code-content pre');
+      codeEl.innerHTML = highlightJSON(mcpCall);
+    }
+
+    function copyToClipboard(toolName) {
+      const tool = TOOLS.find(t => t.name === toolName);
+      const card = document.getElementById(toolName);
+      const values = {};
+
+      card.querySelectorAll('.param-input input').forEach(input => {
+        const paramName = input.dataset.param;
+        if (input.value) values[paramName] = input.value;
+      });
+
+      const mcpCall = generateMCPCall(tool, values);
+      navigator.clipboard.writeText(JSON.stringify(mcpCall, null, 2));
+      showToast('Copied to clipboard');
+    }
+
+    function toggleResponse(toolName) {
+      const card = document.getElementById(toolName);
+      const responseBody = card.querySelector('.response-body');
+      const toggle = card.querySelector('.response-toggle');
+      responseBody.classList.toggle('visible');
+      toggle.textContent = responseBody.classList.contains('visible') ? 'Hide Example' : 'Show Example';
+    }
+
+    function renderToolCard(tool) {
+      const mcpCall = generateMCPCall(tool);
+
+      return `
+        <div class="tool-card" id="${tool.name}">
+          <div class="tool-header">
+            <span class="tool-method">TOOL</span>
+            <span class="tool-endpoint">${tool.name}</span>
+            <span class="tool-status">stable</span>
+          </div>
+          <div class="tool-body">
+            <div class="tool-details">
+              <h3 class="tool-name">${tool.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
+              <p class="tool-desc">${tool.description}</p>
+
+              <h4 class="section-title">Parameters</h4>
+              ${tool.params.length > 0 ? `
+                <div class="params-list">
+                  ${tool.params.map(p => `
+                    <div class="param-row">
+                      <div class="param-info">
+                        <div class="param-name-row">
+                          <span class="param-name">${p.name}</span>
+                          <span class="param-type">${p.type}</span>
+                          ${p.required ? '<span class="param-required">required</span>' : ''}
+                        </div>
+                        <div class="param-desc">${p.description}</div>
+                      </div>
+                      <div class="param-input">
+                        <input type="text"
+                               placeholder="${p.type === 'number' ? '35436' : p.type === 'array' ? '[35436,35437]' : p.type === 'object' ? '{ ... }' : p.name === 'query' ? 'status:open' : 'value'}"
+                               data-param="${p.name}"
+                               data-tool="${tool.name}"
+                               oninput="updateCodePreview('${tool.name}')" />
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<div class="no-params">No parameters required</div>'}
+            </div>
+            <div class="tool-code">
+              <div class="code-header">
+                <span class="code-title">MCP Request</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyToClipboard('${tool.name}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div class="code-block">
+                <div class="code-content">
+                  <pre>${highlightJSON(mcpCall)}</pre>
+                </div>
+              </div>
+              <div class="response-section">
+                <div class="response-header">
+                  <span class="response-title">Response</span>
+                  <span class="response-toggle" onclick="toggleResponse('${tool.name}')">Show Example</span>
+                </div>
+                <div class="response-codes">
+                  <span class="response-code active"><span class="dot success"></span> 200</span>
+                  <span class="response-code"><span class="dot error"></span> 401</span>
+                  <span class="response-code"><span class="dot error"></span> 429</span>
+                </div>
+                <div class="response-body">
+                  <pre>${JSON.stringify(tool.exampleResponse, null, 2)}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTools(tools) {
+      const grouped = groupByCategory(tools);
+      const container = document.getElementById('toolsContainer');
+      container.innerHTML = '';
+
+      Object.entries(grouped).forEach(([category, categoryTools]) => {
+        const section = document.createElement('section');
+        section.innerHTML = `
+          <div class="category-header">
+            <h2>${category} <span class="category-count">(${categoryTools.length})</span></h2>
+          </div>
+          ${categoryTools.map(renderToolCard).join('')}
+        `;
+        container.appendChild(section);
+      });
+    }
+
+    // Search
+    let searchTerm = '';
+
+    function applyFilters() {
+      let filtered = TOOLS;
+
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(t =>
+          t.name.toLowerCase().includes(term) ||
+          t.description.toLowerCase().includes(term) ||
+          t.category.toLowerCase().includes(term)
+        );
+      }
+
+      renderSidebar(filtered);
+      renderTools(filtered);
+
+      document.getElementById('statTotal').textContent = filtered.length;
+      document.getElementById('statStable').textContent = filtered.length;
+    }
+
+    // Init
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchTerm = e.target.value;
+      applyFilters();
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        document.getElementById('searchInput').focus();
+      }
+    });
+
+    // Highlight active nav item on scroll
+    window.addEventListener('hashchange', () => {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('href') === window.location.hash);
+      });
+    });
+
+    renderSidebar(TOOLS);
+    renderTools(TOOLS);
+  </script>
+</body>
+</html>

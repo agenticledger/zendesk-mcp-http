@@ -111,7 +111,7 @@ app.get('/', (_req, res) => {
   res.json({
     name: 'Zendesk MCP Server',
     provider: 'AgenticLedger',
-    version: '2.0.0',
+    version: '2.0.1',
     description:
       'Access Zendesk Support data — tickets, users, organizations, groups, views, macros, SLAs, satisfaction, and Help Center through MCP tools.',
     mcpEndpoint: '/mcp',
@@ -148,7 +148,7 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     server: 'zendesk-mcp-http',
-    version: '2.0.0',
+    version: '2.0.1',
     tools: tools.length,
     transport: 'streamable-http',
     authModel: 'broker-first',
@@ -185,7 +185,7 @@ type ClientResolver = () => Promise<ClientResolution>;
 
 function createMCPServer(resolveClient: ClientResolver): Server {
   const server = new Server(
-    { name: 'zendesk-mcp-server', version: '2.0.0' },
+    { name: 'zendesk-mcp-server', version: '2.0.1' },
     { capabilities: { tools: {} } }
   );
 
@@ -348,7 +348,7 @@ app.delete('/mcp', async (req, res) => {
 
 // ==================== START ====================
 app.listen(PORT, () => {
-  console.log(`Zendesk MCP HTTP Server v2.0.0 (broker-first)`);
+  console.log(`Zendesk MCP HTTP Server v2.0.1 (broker-first)`);
   console.log(`  MCP endpoint:   ${SERVER_BASE_URL}/mcp`);
   console.log(`  Health check:   ${SERVER_BASE_URL}/health`);
   console.log(`  Tools:          ${tools.length}`);
