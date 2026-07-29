@@ -31,6 +31,55 @@ A bare `z.any()` emits a JSON Schema of `{}` — **no `"type"`**. When a param h
 
 ---
 
+## ✅ Fix applied — exact changes (v2.0.1, commit `102b110`)
+
+All edits in `src/tools.ts` unless noted. Deployed & verified live (`/health` → `version:2.0.1`).
+
+**1. Added two helpers** (host-agnostic coercion — parses a stringified-JSON param back to an
+object/array; genuine objects/arrays pass through unchanged):
+```ts
+function asObject(v: unknown): unknown {
+  if (typeof v !== 'string') return v;
+  const s = v.trim();
+  if (!s) return undefined;
+  try { return JSON.parse(s); } catch { return v; } // leave non-JSON strings alone
+}
+function coerce(a: any, ...keys: string[]): any {
+  const out = { ...a };
+  for (const k of keys) if (k in out) out[k] = asObject(out[k]);
+  return out;
+}
+```
+
+**2. Applied to every affected handler** (param[s] coerced in bold):
+
+| Tool | Handler change |
+|---|---|
+| `sla_policy_create` | `c.createSlaPolicy(coerce(a, 'filter'))` |
+| `trigger_create` | `c.createTrigger(coerce(a, 'conditions'))` |
+| `automation_create` | `c.createAutomation(coerce(a, 'conditions'))` |
+| `macro_create` | `c.createMacro(coerce(a, 'restriction'))` |
+| `view_create` | `c.createView(coerce(a, 'conditions', 'execution', 'restriction'))` |
+| `sla_policy_update` | `c.updateSlaPolicy(id, coerce(rest, 'filter'))` |
+| `trigger_update` | `c.updateTrigger(id, coerce(rest, 'conditions'))` |
+| `automation_update` | `c.updateAutomation(id, coerce(rest, 'conditions'))` |
+| `view_update` | `c.updateView(id, coerce(rest, 'conditions', 'execution', 'restriction'))` |
+| `zendesk_api_request` | `c.raw(method, a.path, a.query, asObject(a.body))` — kills the double-encode |
+
+**3. Did NOT change** `src/api-client.ts` (it was correct — stringifies exactly once) or any
+tool's `inputSchema` — the coercion alone fixes both the stringified-input and real-object cases,
+so schemas stay backward-compatible.
+
+**4. Tests** (`test/mock-test.ts`): added 7 assertions proving stringified-JSON `conditions` /
+`filter` / `execution` / passthrough `body` arrive at the (mocked) Zendesk API as **objects**, and
+that a real-object `conditions` still passes through unchanged. Full suite: **227/227 pass**, zero
+live calls.
+
+**5. Shipped:** `version` bumped `2.0.0 → 2.0.1` (`package.json` + `src/index.ts`); commit `102b110`
+pushed to `main`; Railway auto-deployed; `zendeskmcp.agenticledger.ai/health` confirms `2.0.1`.
+
+---
+
 ## Reproduction (live, 2026-07-29)
 
 Auth in use: broker OAuth token `id 51881930614932`, scopes **`["read","write","hc:write"]`** (admin user). Write scope is present and proven — see below.
