@@ -196,6 +196,42 @@ async function main() {
     check(typeof call?.body?.trigger?.conditions === 'object', 'trigger_create: real-object conditions still an object');
   }
 
+  // ---- Serialization coercion, ARRAY params on *_update (BUG-update-tools-array-params):
+  //      untyped .passthrough() update schemas deliver arrays as strings; must be coerced ----
+  {
+    const { call } = await run('trigger_update', { id: '4', actions: '[{"field":"priority","value":"urgent"}]' });
+    check(Array.isArray(call?.body?.trigger?.actions), 'trigger_update: stringified actions coerced to array (not "must be an array")');
+  }
+  {
+    const { call } = await run('automation_update', { id: '2', actions: '[{"field":"status","value":"closed"}]' });
+    check(Array.isArray(call?.body?.automation?.actions), 'automation_update: stringified actions coerced to array');
+  }
+  {
+    const { call } = await run('macro_update', { id: '6', actions: '[{"field":"status","value":"solved"}]' });
+    check(Array.isArray(call?.body?.macro?.actions), 'macro_update: stringified actions coerced to array');
+  }
+  {
+    const { call } = await run('sla_policy_update', { id: '3', policy_metrics: '[{"priority":"normal","metric":"first_reply_time","target":60}]' });
+    check(Array.isArray(call?.body?.sla_policy?.policy_metrics), 'sla_policy_update: stringified policy_metrics coerced to array');
+  }
+  {
+    const { call } = await run('ticket_field_update', { id: '123', custom_field_options: '[{"name":"A","value":"a"}]' });
+    check(Array.isArray(call?.body?.ticket_field?.custom_field_options), 'ticket_field_update: stringified custom_field_options coerced to array');
+  }
+  {
+    const { call } = await run('ticket_form_update', { id: '55', ticket_field_ids: '[1,2,3]' });
+    check(Array.isArray(call?.body?.ticket_form?.ticket_field_ids), 'ticket_form_update: stringified ticket_field_ids coerced to array');
+  }
+  {
+    const { call } = await run('schedule_update', { id: '1', intervals: '[{"start_time":0,"end_time":60}]' });
+    check(Array.isArray(call?.body?.schedule?.intervals), 'schedule_update: stringified intervals coerced to array');
+  }
+  {
+    // real arrays must still pass through unchanged
+    const { call } = await run('trigger_update', { id: '4', actions: [{ field: 'priority', value: 'low' }] });
+    check(Array.isArray(call?.body?.trigger?.actions), 'trigger_update: real-array actions still an array');
+  }
+
   // ---- Sanity: no call ever left the sandbox host ----
   check(true, 'sentinel');
 

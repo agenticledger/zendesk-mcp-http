@@ -530,7 +530,7 @@ export const tools: ToolDef[] = [
     name: 'ticket_field_update',
     description: 'Update a ticket field. Pass id + any ticket_field attributes to change.',
     inputSchema: z.object({ id: z.string().describe('ticket field ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketField(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketField(id, coerce(rest, 'custom_field_options')); },
   },
   {
     name: 'ticket_field_delete',
@@ -563,7 +563,7 @@ export const tools: ToolDef[] = [
     name: 'ticket_form_update',
     description: 'Update a ticket form. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('ticket form ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketForm(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketForm(id, coerce(rest, 'ticket_field_ids')); },
   },
   {
     name: 'ticket_form_delete',
@@ -642,7 +642,7 @@ export const tools: ToolDef[] = [
     name: 'sla_policy_update',
     description: 'Update an SLA policy. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('SLA policy ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSlaPolicy(id, coerce(rest, 'filter')); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSlaPolicy(id, coerce(rest, 'filter', 'policy_metrics')); },
   },
   {
     name: 'sla_policy_delete',
@@ -677,7 +677,7 @@ export const tools: ToolDef[] = [
     name: 'trigger_update',
     description: 'Update a trigger. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('trigger ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTrigger(id, coerce(rest, 'conditions')); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTrigger(id, coerce(rest, 'conditions', 'actions')); },
   },
   {
     name: 'trigger_delete',
@@ -722,7 +722,7 @@ export const tools: ToolDef[] = [
     name: 'automation_update',
     description: 'Update an automation. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('automation ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateAutomation(id, coerce(rest, 'conditions')); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateAutomation(id, coerce(rest, 'conditions', 'actions')); },
   },
   {
     name: 'automation_delete',
@@ -761,7 +761,7 @@ export const tools: ToolDef[] = [
     name: 'schedule_update',
     description: 'Update a business-hours schedule. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('schedule ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSchedule(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSchedule(id, coerce(rest, 'intervals')); },
   },
 
   // ==================== CONFIG: CUSTOM STATUSES (3) ====================
@@ -815,7 +815,7 @@ export const tools: ToolDef[] = [
     name: 'macro_update',
     description: 'Update a macro. Pass id + attributes to change.',
     inputSchema: z.object({ id: z.string().describe('macro ID') }).passthrough(),
-    handler: async (c, a) => { const { id, ...rest } = a; return c.updateMacro(id, rest); },
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateMacro(id, coerce(rest, 'actions', 'restriction')); },
   },
   {
     name: 'macro_delete',
