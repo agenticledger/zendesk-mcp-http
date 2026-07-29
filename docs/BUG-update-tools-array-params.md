@@ -5,7 +5,7 @@
 update, and the tool can't send them). Blocks the *modify* half of routing/escalation/SLA buildout
 (D2/D7 of the Bastion CS SOW). Same failure class likely affects `automation_update`, `view_update`,
 `macro_update`, and any `*_update` with an array-valued param.
-**Status:** ✅ **RESOLVED** — fixed in `v2.0.2` (commit below, live at `zendeskmcp.agenticledger.ai`,
+**Status:** ✅ **RESOLVED** — fixed in `v2.0.2` (commit `5c78546`, live at `zendeskmcp.agenticledger.ai`,
 2026-07-29). Root cause confirmed exactly as diagnosed. This is the **sibling** of the already-fixed
 `BUG-hash-param-serialization.md` (v2.0.1): that fix coerced **object** params on update handlers but
 **not array** params — v2.0.2 adds the array keys to each `*_update` handler's `coerce()` list.
