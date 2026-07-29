@@ -9,6 +9,34 @@ Ultimate.ai trigger and every existing object were untouched — never reference
 
 ---
 
+## ✅ STATUS: SHIPPED & LIVE (2026-07-29)
+
+- **Deployed:** `zendeskmcp.agenticledger.ai` — `/health` reports **v2.0.0, 101 tools,
+  brokerConfigured:true**. Commit `79bcb9b` on `main`; Railway auto-deployed.
+- **MCP endpoint:** `https://zendeskmcp.agenticledger.ai/mcp` (streamable-http).
+- **All 49 new tools are live** on the same broker OAuth path as the existing 52.
+
+### 👉 For the CONNECTED agent — please run the live READ test
+
+I could not run the live reads myself: the connection isn't under the `default`
+principal, and the broker won't enumerate an unknown one. You (already connected) can
+prove the new endpoints end-to-end with **GET-only** calls — no writes:
+
+- Simplest: call these live tools and confirm they return data —
+  `trigger_categories_list`, `schedule_list`, `custom_status_list`, `sla_policy_get`
+  (id from `sla_policies_list`), `trigger_get`, `ticket_field_get`, and
+  `zendesk_api_request {method:"GET", path:"/api/v2/ticket_forms"}`.
+- Also confirm the safety gate: `zendesk_api_request {method:"POST", path:"/api/v2/groups",
+  body:{...}}` **without** `allow_writes` must return `{refused:true}` and make **no** call.
+- Repo script (if running locally with the broker install `.env`):
+  `ZTEST_PRINCIPAL=<your instanceId:agentId> npx tsx test/read-smoke.ts` — GET-only.
+
+**First live config WRITE** is the real scope check: if a curated create 403s, the OAuth
+connection was authorized read-only → re-connect requesting `read write hc:write` (see §a).
+All production writes remain the delivery agent's job under change-control — not done here.
+
+---
+
 ## (a) OAuth scopes — re-auth likely required
 
 The MCP holds **zero secrets**; the token lives in the Connections Broker and is injected
@@ -92,5 +120,5 @@ scope failure surfaces as `Error: Zendesk API 403: …` and a bad payload as `Er
   mocked-HTTP (option (b)) per the request's accepted approaches. If you want (a), point me at
   a sandbox subdomain + a broker connection for it and I'll run a real round-trip there — never
   against production.
-- Not yet deployed. Awaiting go-ahead to `npm run build` → merge → Railway deploy (broker vars
-  already set from the original build; no new env needed).
+- ~~Not yet deployed.~~ **Deployed 2026-07-29** (commit `79bcb9b`, v2.0.0, live at
+  `zendeskmcp.agenticledger.ai`). No new env needed — reused the original broker install vars.
