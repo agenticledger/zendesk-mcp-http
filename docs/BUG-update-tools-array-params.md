@@ -9,6 +9,8 @@ update, and the tool can't send them). Blocks the *modify* half of routing/escal
 2026-07-29). Root cause confirmed exactly as diagnosed. This is the **sibling** of the already-fixed
 `BUG-hash-param-serialization.md` (v2.0.1): that fix coerced **object** params on update handlers but
 **not array** params — v2.0.2 adds the array keys to each `*_update` handler's `coerce()` list.
+**Not the cause:** OAuth scope, Zendesk permissions, the broker, the gateway, or the API client — all
+independently proven working (the passthrough workaround below returns HTTP 200 with identical data).
 
 ### Fix applied — exact changes (v2.0.2)
 
@@ -38,8 +40,6 @@ through. Full suite **235/235 pass**, zero live calls. Version bumped `2.0.1 →
 
 **Please re-run the Verification plan below live** — `*_update` with an `actions` array should now 200.
 Original diagnosis/repro preserved below for the record.
-**Not the cause:** OAuth scope, Zendesk permissions, the broker, the gateway, or the API client — all
-independently proven working (the passthrough workaround below returns HTTP 200 with identical data).
 
 ---
 
