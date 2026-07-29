@@ -2,11 +2,13 @@ import { z } from 'zod';
 import { ZendeskClient } from './api-client.js';
 
 /**
- * Zendesk MCP Tool Definitions — 52 tools.
+ * Zendesk MCP Tool Definitions — 101 tools.
  *
  * Tickets, Search, Users, Organizations, Groups, Workflow/config,
- * Satisfaction, and (read-only) Help Center. All calls target
- * {broker meta.baseUrl}/api/v2. [R]=read (GET), [W]=write.
+ * Satisfaction, Help Center (read + write), full CONFIG CRUD (ticket
+ * fields/forms, groups, SLA policies, triggers, automations, schedules,
+ * custom statuses, macros, views), and a read-safe generic passthrough.
+ * All calls target {broker meta.baseUrl}/api/v2. [R]=read (GET), [W]=write.
  */
 
 interface ToolDef {
@@ -15,6 +17,16 @@ interface ToolDef {
   inputSchema: z.ZodType<any>;
   handler: (client: ZendeskClient, args: any) => Promise<any>;
 }
+
+/** HTTP verbs the generic passthrough refuses unless allow_writes:true. */
+const WRITE_VERBS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+
+/**
+ * No-op spread marker on create schemas. The listed fields are the documented,
+ * validated surface; anything more exotic than these goes through
+ * `zendesk_api_request` (which sends the raw body untouched).
+ */
+const passthroughField = {} as Record<string, never>;
 
 /** Cursor + legacy pagination + sort — all optional. */
 const pageParams = {
@@ -438,5 +450,445 @@ export const tools: ToolDef[] = [
     description: 'List Help Center categories',
     inputSchema: z.object({ locale: z.string().optional().describe('locale e.g. en-us'), ...pageParams }),
     handler: async (c, a) => c.listHcCategories(a),
+  },
+
+  // ==================== GENERIC PASSTHROUGH (1) ====================
+  {
+    name: 'zendesk_api_request',
+    description:
+      'Authenticated passthrough to ANY Zendesk /api/v2 endpoint using the same broker OAuth token. ' +
+      'GET is always allowed. Write verbs (POST/PUT/DELETE/PATCH) are REFUSED unless allow_writes:true is ' +
+      'explicitly passed — this tool never writes by default. Use for endpoints without a curated tool.',
+    inputSchema: z.object({
+      method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).describe('HTTP method'),
+      path: z.string().describe('endpoint path, e.g. /api/v2/ticket_fields or ticket_fields/123'),
+      query: z.record(z.any()).optional().describe('query-string params as an object'),
+      body: z.any().optional().describe('JSON request body (for write verbs)'),
+      allow_writes: z.boolean().optional().describe('must be true to permit POST/PUT/DELETE/PATCH; default false'),
+    }),
+    handler: async (c, a) => {
+      const method = String(a.method || 'GET').toUpperCase();
+      if (WRITE_VERBS.has(method) && a.allow_writes !== true) {
+        return {
+          refused: true,
+          reason:
+            `Write verb ${method} is blocked. zendesk_api_request is read-safe by default; ` +
+            `re-call with allow_writes:true to permit this write.`,
+        };
+      }
+      return c.raw(method, a.path, a.query, a.body);
+    },
+  },
+
+  // ==================== CONFIG: TICKET FIELDS (4) ====================
+  {
+    name: 'ticket_field_get',
+    description: 'Get a ticket field by ID',
+    inputSchema: z.object({ id: z.string().describe('ticket field ID') }),
+    handler: async (c, a) => c.getTicketField(a.id),
+  },
+  {
+    name: 'ticket_field_create',
+    description: 'Create a custom ticket field (e.g. a tagger dropdown). Pass the raw Zendesk ticket_field object.',
+    inputSchema: z.object({
+      type: z.string().describe('field type e.g. tagger, text, checkbox, integer, decimal, date, regexp, multiselect'),
+      title: z.string().describe('admin title'),
+      description: z.string().optional().describe('field description'),
+      required: z.boolean().optional().describe('required to solve'),
+      active: z.boolean().optional().describe('active'),
+      custom_field_options: z.array(z.any()).optional().describe('options for tagger/multiselect: [{name,value}]'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createTicketField(a),
+  },
+  {
+    name: 'ticket_field_update',
+    description: 'Update a ticket field. Pass id + any ticket_field attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('ticket field ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketField(id, rest); },
+  },
+  {
+    name: 'ticket_field_delete',
+    description: 'Delete a ticket field',
+    inputSchema: z.object({ id: z.string().describe('ticket field ID') }),
+    handler: async (c, a) => c.deleteTicketField(a.id),
+  },
+
+  // ==================== CONFIG: TICKET FORMS (4) ====================
+  {
+    name: 'ticket_form_get',
+    description: 'Get a ticket form by ID',
+    inputSchema: z.object({ id: z.string().describe('ticket form ID') }),
+    handler: async (c, a) => c.getTicketForm(a.id),
+  },
+  {
+    name: 'ticket_form_create',
+    description: 'Create a ticket form. ticket_field_ids orders the fields on the form.',
+    inputSchema: z.object({
+      name: z.string().describe('form name'),
+      ticket_field_ids: z.array(z.number()).optional().describe('ordered field IDs'),
+      active: z.boolean().optional().describe('active'),
+      end_user_visible: z.boolean().optional().describe('visible to end users'),
+      default: z.boolean().optional().describe('make default form'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createTicketForm(a),
+  },
+  {
+    name: 'ticket_form_update',
+    description: 'Update a ticket form. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('ticket form ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTicketForm(id, rest); },
+  },
+  {
+    name: 'ticket_form_delete',
+    description: 'Delete a ticket form',
+    inputSchema: z.object({ id: z.string().describe('ticket form ID') }),
+    handler: async (c, a) => c.deleteTicketForm(a.id),
+  },
+
+  // ==================== CONFIG: GROUPS + MEMBERSHIPS (5) ====================
+  {
+    name: 'group_create',
+    description: 'Create a group',
+    inputSchema: z.object({
+      name: z.string().describe('group name'),
+      description: z.string().optional().describe('group description'),
+      default: z.boolean().optional().describe('make default group'),
+    }),
+    handler: async (c, a) => c.createGroup(a),
+  },
+  {
+    name: 'group_update',
+    description: 'Update a group',
+    inputSchema: z.object({
+      id: z.string().describe('group ID'),
+      name: z.string().optional().describe('updated name'),
+      description: z.string().optional().describe('updated description'),
+    }),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateGroup(id, rest); },
+  },
+  {
+    name: 'group_delete',
+    description: 'Delete a group',
+    inputSchema: z.object({ id: z.string().describe('group ID') }),
+    handler: async (c, a) => c.deleteGroup(a.id),
+  },
+  {
+    name: 'group_membership_create',
+    description: 'Add a user to a group',
+    inputSchema: z.object({
+      user_id: z.number().describe('user ID'),
+      group_id: z.number().describe('group ID'),
+      default: z.boolean().optional().describe('make this the user\'s default group'),
+    }),
+    handler: async (c, a) => c.createGroupMembership(a),
+  },
+  {
+    name: 'group_membership_delete',
+    description: 'Remove a group membership by its membership ID',
+    inputSchema: z.object({ id: z.string().describe('group membership ID') }),
+    handler: async (c, a) => c.deleteGroupMembership(a.id),
+  },
+
+  // ==================== CONFIG: SLA POLICIES (4) ====================
+  {
+    name: 'sla_policy_get',
+    description: 'Get an SLA policy by ID',
+    inputSchema: z.object({ id: z.string().describe('SLA policy ID') }),
+    handler: async (c, a) => c.getSlaPolicy(a.id),
+  },
+  {
+    name: 'sla_policy_create',
+    description:
+      'Create an SLA policy. filter selects tickets; policy_metrics sets targets ' +
+      '(e.g. [{priority:"normal",metric:"first_reply_time",target:60,business_hours:false}]).',
+    inputSchema: z.object({
+      title: z.string().describe('policy title'),
+      description: z.string().optional().describe('description'),
+      position: z.number().optional().describe('evaluation order'),
+      filter: z.any().optional().describe('{all:[...],any:[...]} condition set'),
+      policy_metrics: z.array(z.any()).optional().describe('SLA targets'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createSlaPolicy(a),
+  },
+  {
+    name: 'sla_policy_update',
+    description: 'Update an SLA policy. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('SLA policy ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSlaPolicy(id, rest); },
+  },
+  {
+    name: 'sla_policy_delete',
+    description: 'Delete an SLA policy',
+    inputSchema: z.object({ id: z.string().describe('SLA policy ID') }),
+    handler: async (c, a) => c.deleteSlaPolicy(a.id),
+  },
+
+  // ==================== CONFIG: TRIGGERS + CATEGORIES (6) ====================
+  {
+    name: 'trigger_get',
+    description: 'Get a trigger by ID',
+    inputSchema: z.object({ id: z.string().describe('trigger ID') }),
+    handler: async (c, a) => c.getTrigger(a.id),
+  },
+  {
+    name: 'trigger_create',
+    description:
+      'Create a trigger. conditions {all:[...],any:[...]} + actions [...]. Optionally set category_id.',
+    inputSchema: z.object({
+      title: z.string().describe('trigger title'),
+      conditions: z.any().optional().describe('{all:[...],any:[...]}'),
+      actions: z.array(z.any()).optional().describe('actions to run'),
+      active: z.boolean().optional().describe('active'),
+      category_id: z.string().optional().describe('trigger category ID'),
+      position: z.number().optional().describe('order'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createTrigger(a),
+  },
+  {
+    name: 'trigger_update',
+    description: 'Update a trigger. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('trigger ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateTrigger(id, rest); },
+  },
+  {
+    name: 'trigger_delete',
+    description: 'Delete a trigger',
+    inputSchema: z.object({ id: z.string().describe('trigger ID') }),
+    handler: async (c, a) => c.deleteTrigger(a.id),
+  },
+  {
+    name: 'trigger_categories_list',
+    description: 'List trigger categories',
+    inputSchema: z.object({ ...pageParams }),
+    handler: async (c, a) => c.listTriggerCategories(a),
+  },
+  {
+    name: 'trigger_category_create',
+    description: 'Create a trigger category',
+    inputSchema: z.object({ name: z.string().describe('category name') }),
+    handler: async (c, a) => c.createTriggerCategory(a),
+  },
+
+  // ==================== CONFIG: AUTOMATIONS (4) ====================
+  {
+    name: 'automation_get',
+    description: 'Get an automation by ID',
+    inputSchema: z.object({ id: z.string().describe('automation ID') }),
+    handler: async (c, a) => c.getAutomation(a.id),
+  },
+  {
+    name: 'automation_create',
+    description:
+      'Create an automation (time-based). conditions must include a time condition; actions [...].',
+    inputSchema: z.object({
+      title: z.string().describe('automation title'),
+      conditions: z.any().optional().describe('{all:[...],any:[...]}'),
+      actions: z.array(z.any()).optional().describe('actions to run'),
+      active: z.boolean().optional().describe('active'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createAutomation(a),
+  },
+  {
+    name: 'automation_update',
+    description: 'Update an automation. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('automation ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateAutomation(id, rest); },
+  },
+  {
+    name: 'automation_delete',
+    description: 'Delete an automation',
+    inputSchema: z.object({ id: z.string().describe('automation ID') }),
+    handler: async (c, a) => c.deleteAutomation(a.id),
+  },
+
+  // ==================== CONFIG: BUSINESS-HOURS SCHEDULES (4) ====================
+  {
+    name: 'schedule_list',
+    description: 'List business-hours schedules',
+    inputSchema: z.object({ ...pageParams }),
+    handler: async (c, a) => c.listSchedules(a),
+  },
+  {
+    name: 'schedule_get',
+    description: 'Get a business-hours schedule by ID',
+    inputSchema: z.object({ id: z.string().describe('schedule ID') }),
+    handler: async (c, a) => c.getSchedule(a.id),
+  },
+  {
+    name: 'schedule_create',
+    description:
+      'Create a business-hours schedule. intervals are minutes-from-Sunday-midnight ' +
+      '[{start_time,end_time}] blocks; time_zone e.g. "Eastern Time (US & Canada)".',
+    inputSchema: z.object({
+      name: z.string().describe('schedule name'),
+      time_zone: z.string().describe('schedule time zone'),
+      intervals: z.array(z.any()).optional().describe('work-week intervals'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createSchedule(a),
+  },
+  {
+    name: 'schedule_update',
+    description: 'Update a business-hours schedule. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('schedule ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateSchedule(id, rest); },
+  },
+
+  // ==================== CONFIG: CUSTOM STATUSES (3) ====================
+  {
+    name: 'custom_status_list',
+    description: 'List custom ticket statuses',
+    inputSchema: z.object({ ...pageParams }),
+    handler: async (c, a) => c.listCustomStatuses(a),
+  },
+  {
+    name: 'custom_status_create',
+    description: 'Create a custom ticket status under a status_category (new/open/pending/hold/solved).',
+    inputSchema: z.object({
+      status_category: z.enum(['new', 'open', 'pending', 'hold', 'solved']).describe('base status category'),
+      agent_label: z.string().describe('label agents see'),
+      end_user_label: z.string().optional().describe('label end users see'),
+      description: z.string().optional().describe('description'),
+      active: z.boolean().optional().describe('active'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createCustomStatus(a),
+  },
+  {
+    name: 'custom_status_update',
+    description: 'Update a custom ticket status. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('custom status ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateCustomStatus(id, rest); },
+  },
+
+  // ==================== CONFIG: MACROS (4) ====================
+  {
+    name: 'macro_get',
+    description: 'Get a macro by ID',
+    inputSchema: z.object({ id: z.string().describe('macro ID') }),
+    handler: async (c, a) => c.getMacro(a.id),
+  },
+  {
+    name: 'macro_create',
+    description: 'Create a macro. actions [...] apply to a ticket when the macro is run.',
+    inputSchema: z.object({
+      title: z.string().describe('macro title'),
+      actions: z.array(z.any()).optional().describe('actions to apply'),
+      active: z.boolean().optional().describe('active'),
+      description: z.string().optional().describe('description'),
+      restriction: z.any().optional().describe('group/agent restriction'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createMacro(a),
+  },
+  {
+    name: 'macro_update',
+    description: 'Update a macro. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('macro ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateMacro(id, rest); },
+  },
+  {
+    name: 'macro_delete',
+    description: 'Delete a macro',
+    inputSchema: z.object({ id: z.string().describe('macro ID') }),
+    handler: async (c, a) => c.deleteMacro(a.id),
+  },
+
+  // ==================== CONFIG: VIEWS (3) ====================
+  {
+    name: 'view_create',
+    description: 'Create a view. conditions {all:[...],any:[...]} + execution columns/group/sort.',
+    inputSchema: z.object({
+      title: z.string().describe('view title'),
+      conditions: z.any().optional().describe('{all:[...],any:[...]}'),
+      execution: z.any().optional().describe('columns/group/sort config'),
+      active: z.boolean().optional().describe('active'),
+      restriction: z.any().optional().describe('group/agent restriction'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => c.createView(a),
+  },
+  {
+    name: 'view_update',
+    description: 'Update a view. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('view ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateView(id, rest); },
+  },
+  {
+    name: 'view_delete',
+    description: 'Delete a view',
+    inputSchema: z.object({ id: z.string().describe('view ID') }),
+    handler: async (c, a) => c.deleteView(a.id),
+  },
+
+  // ==================== HELP CENTER (write) (7) ====================
+  {
+    name: 'hc_category_create',
+    description: 'Create a Help Center category',
+    inputSchema: z.object({
+      locale: z.string().describe('locale e.g. en-us'),
+      name: z.string().describe('category name'),
+      description: z.string().optional().describe('description'),
+      position: z.number().optional().describe('order'),
+    }),
+    handler: async (c, a) => { const { locale, ...category } = a; return c.createHcCategory(locale, category); },
+  },
+  {
+    name: 'hc_category_update',
+    description: 'Update a Help Center category. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('category ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateHcCategory(id, rest); },
+  },
+  {
+    name: 'hc_section_create',
+    description: 'Create a Help Center section under a category',
+    inputSchema: z.object({
+      locale: z.string().describe('locale e.g. en-us'),
+      category_id: z.string().describe('parent category ID'),
+      name: z.string().describe('section name'),
+      description: z.string().optional().describe('description'),
+      position: z.number().optional().describe('order'),
+    }),
+    handler: async (c, a) => { const { locale, category_id, ...section } = a; return c.createHcSection(locale, category_id, section); },
+  },
+  {
+    name: 'hc_section_update',
+    description: 'Update a Help Center section. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('section ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateHcSection(id, rest); },
+  },
+  {
+    name: 'hc_article_create',
+    description:
+      'Create a Help Center article under a section. NOTE: Zendesk requires permission_group_id ' +
+      '(who can edit) and user_segment_id (who can view; null = everyone) on create.',
+    inputSchema: z.object({
+      locale: z.string().describe('locale e.g. en-us'),
+      section_id: z.string().describe('parent section ID'),
+      title: z.string().describe('article title'),
+      body: z.string().optional().describe('HTML body'),
+      permission_group_id: z.number().describe('required: editing permission group ID'),
+      user_segment_id: z.number().nullable().optional().describe('viewing segment ID; null = everyone'),
+      draft: z.boolean().optional().describe('save as draft'),
+      ...passthroughField,
+    }),
+    handler: async (c, a) => { const { locale, section_id, ...article } = a; return c.createHcArticle(locale, section_id, article); },
+  },
+  {
+    name: 'hc_article_update',
+    description: 'Update a Help Center article. Pass id + attributes to change.',
+    inputSchema: z.object({ id: z.string().describe('article ID') }).passthrough(),
+    handler: async (c, a) => { const { id, ...rest } = a; return c.updateHcArticle(id, rest); },
+  },
+  {
+    name: 'hc_article_delete',
+    description: 'Delete a Help Center article',
+    inputSchema: z.object({ id: z.string().describe('article ID') }),
+    handler: async (c, a) => c.deleteHcArticle(a.id),
   },
 ];
